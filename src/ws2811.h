@@ -12,13 +12,13 @@
 
 /* ------------------------------------------------------------------------- */
 
-#define CHANNELS 120
+#define NUM_LED 120
 
 /* ------------------------------------------------------------------------- */
 
-uint8_t r[CHANNELS];
-uint8_t g[CHANNELS];
-uint8_t b[CHANNELS];
+uint8_t r[NUM_LED];
+uint8_t g[NUM_LED];
+uint8_t b[NUM_LED];
 
 /* ------------------------------------------------------------------------- */
 
@@ -40,17 +40,20 @@ uint8_t b[CHANNELS];
 #define NOP14 NOP NOP13
 #define NOP15 NOP NOP14
 
-#define NOP_SHORT NOP4
-#define NOP_LONG NOP12
+#define NOP_SHORT NOP5 /* < NOT4 does not work */
+#define NOP_LONG NOP13 /* < NOP12 does not work */
+
+#define WS2811_RESET_DELAY_US 51
 
 /* ------------------------------------------------------------------------- */
 
 #define WS2811_PORT PORTA
-#define WS2811_PIN PIN1_bm
+#define WS2811_PIN  PIN1_bm
 
 /* ------------------------------------------------------------------------- */
 
 #define WS2811_BIT_SET(X, N) \
+    /*printf("%d %d\r\n", X, N);*/ \
     if ( X & (1<<N)) { \
         WS2811_PORT.OUT |=  WS2811_PIN; \
         NOP_LONG; \
@@ -74,22 +77,33 @@ uint8_t b[CHANNELS];
     WS2811_BIT_SET(cur_byte, 1); \
     WS2811_BIT_SET(cur_byte, 0);
 
-#define WS2811_ALL() \
-    uint8_t i = 0; \
-    for (i = 0; i < CHANNELS; i++) \
-    { \
-        WS2811_BIT_ALL(g[i] & 0xff); \
-        WS2811_BIT_ALL(r[i] & 0xff); \
-        WS2811_BIT_ALL(b[i] & 0xff); \
-    }
+#define WS2811_SEND_PIXEL(R, G, B) \
+    WS2811_BIT_ALL(G); \
+    WS2811_BIT_ALL(R); \
+    WS2811_BIT_ALL(B);
 
 #define WS2811_UPDATE_COLORS() \
     /* Reset */ \
-    WS2811_PORT.OUT |= WS2811_PIN; \
-    _delay_us(50); \
+    WS2811_PORT.OUT &= ~WS2811_PIN; \
+    _delay_us(WS2811_RESET_DELAY_US); \
     /* Send all color channels */ \
-    WS2811_ALL(); \
-    WS2811_PORT.OUT &= ~WS2811_PIN;
+    for (uint8_t i = 0; i < NUM_LED; i++) \
+    { \
+        WS2811_BIT_ALL(gbuff[i] & 0xff); \
+        WS2811_BIT_ALL(rbuff[i] & 0xff); \
+        WS2811_BIT_ALL(bbuff[i] & 0xff); \
+    }\
+    WS2811_PORT.OUT |= WS2811_PIN;
+
+#define WS2811_SET_BUFFER_ALL(R, G, B) \
+    /* set the no signal color */ \
+    for (uint8_t i = 0; i < NUM_LED; i++) \
+    { \
+        rbuff[i] = R; \
+        gbuff[i] = G; \
+        bbuff[i] = B; \
+    }
+
 
 /* ------------------------------------------------------------------------- */
 
